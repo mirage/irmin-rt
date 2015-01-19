@@ -1,0 +1,15 @@
+OASISFormat: 0.4
+Name:        irmin-rt
+Version:     0.1.0
+Synopsis:    Regression tests for Irmin
+Authors:     Gregory Tsipenyuk, Thomas Gazagnaire
+License:     ISC
+Plugins:     META (0.3), DevFiles (0.3)
+BuildTools:  ocamlbuild
+
+Executable overhead
+  Path:             overhead/
+  MainIs:           overhead.ml
+  CompiledObject:   best
+  Install:          false
+  BuildDepends:     irmin.unix
