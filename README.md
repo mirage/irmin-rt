@@ -14,3 +14,12 @@ messages of size 100 bytes you run:
 ```
 overhead -ascii-u 100 -cnt 20_000.
 ```
+
+### Search
+
+```
+search -samples num
+```
+
+This search tester will get all first level keys under the “root” key
+and will do `num` random access.

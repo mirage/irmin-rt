@@ -13,3 +13,10 @@ Executable overhead
   CompiledObject:   best
   Install:          false
   BuildDepends:     irmin.unix
+
+Executable search
+  Path:             search/
+  MainIs:           search.ml
+  CompiledObject:   best
+  Install:          false
+  BuildDepends:     irmin.unix

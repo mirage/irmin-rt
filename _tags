@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 87032d7150cbc439d36ed20850d40d69)
+# DO NOT EDIT (digest: fb74b4af3fe85bda4d989ed3d77de68e)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -17,4 +17,7 @@ true: annot, bin_annot
 # Executable overhead
 <overhead/overhead.{native,byte}>: pkg_irmin.unix
 <overhead/*.ml{,i,y}>: pkg_irmin.unix
+# Executable search
+<search/search.{native,byte}>: pkg_irmin.unix
+<search/*.ml{,i,y}>: pkg_irmin.unix
 # OASIS_STOP
