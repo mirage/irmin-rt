@@ -46,18 +46,23 @@ let () =
     let config = Irmin_git.config ~root:"/tmp/irmin/test" ~bare:true () in
     Store.create config task >>= fun store ->
     get_cnt store >>= fun cnt ->
-    let rec search i =
+    let rec search i avg =
       if i > samples then
-        return ()
+        return avg
       else (
         let key = string_of_int ((mod) (Random.int 999999999) (cnt+1)) in
         let tm = Unix.gettimeofday () in
         Store.read_exn (store "") ["root";key] >>= fun v ->
         let tm1 = Unix.gettimeofday () in
-        Printf.printf "%s %0.4f\n%!" key (tm1 -. tm);
-        search (i + 1)
+        let diff = tm1 -. tm in
+        Printf.printf "%s %0.4f\n%!" key diff;
+        search (i + 1) (avg +. diff)
       )
     in
-    search 1
+    let tm = Unix.gettimeofday () in
+    search 1 0. >>= fun avg ->
+    let tm1 = Unix.gettimeofday () in
+    Printf.printf "avg: %0.4f, total: %0.4f\n%!" (avg /. (float_of_int samples)) (tm1 -. tm);
+    return ()
     )
   )
