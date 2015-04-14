@@ -57,24 +57,25 @@ let get_content content key =
  * -image[-u] path (image's path)
  * -cnt messages (number of messages)
  *)
-let rec args i content start cnt group once =
+let rec args i content start cnt group once repo =
   if i >= Array.length Sys.argv then
-    (content,start,cnt,group, once)
+    (content,start,cnt,group,once,repo)
   else
     match Sys.argv.(i) with
-    | "-ascii" -> args (i+2) (Some (`Ascii (int_of_string Sys.argv.(i+1)))) start cnt group once
-    | "-ascii-u" -> args (i+2) (Some (`AsciiU (int_of_string Sys.argv.(i+1)))) start cnt group once
-    | "-image" -> args (i+2) (Some (`Image Sys.argv.(i+1))) start cnt group once
-    | "-image-u" -> args (i+2) (Some (`ImageU Sys.argv.(i+1))) start cnt group once
-    | "-start" -> args (i+2) content (Some (int_of_string Sys.argv.(i+1))) cnt group once
-    | "-cnt" -> args (i+2) content start (Some (int_of_string Sys.argv.(i+1))) group once
-    | "-group" -> args (i+2) content start cnt (Some (int_of_string Sys.argv.(i+1))) once
-    | "-commit-once" -> args (i+1) content start cnt group true
+    | "-ascii" -> args (i+2) (Some (`Ascii (int_of_string Sys.argv.(i+1)))) start cnt group once repo
+    | "-ascii-u" -> args (i+2) (Some (`AsciiU (int_of_string Sys.argv.(i+1)))) start cnt group once repo
+    | "-image" -> args (i+2) (Some (`Image Sys.argv.(i+1))) start cnt group once repo
+    | "-image-u" -> args (i+2) (Some (`ImageU Sys.argv.(i+1))) start cnt group once repo
+    | "-start" -> args (i+2) content (Some (int_of_string Sys.argv.(i+1))) cnt group once repo
+    | "-cnt" -> args (i+2) content start (Some (int_of_string Sys.argv.(i+1))) group once repo
+    | "-group" -> args (i+2) content start cnt (Some (int_of_string Sys.argv.(i+1))) once repo
+    | "-commit-once" -> args (i+1) content start cnt group true repo
+    | "-repo" -> args (i+2) content start cnt group once (Some Sys.argv.(i+1))
     | _ -> raise InvalidCommand
 
 let usage () =
   Printf.printf "usage: overhead [-ascii[-u] size|-image[-u] path] -cnt num
-  -start num -group num -commit-once\n%!"
+  -repo path [-start num] [-group num] [-commit-once]\n%!"
 
 module Option = struct
   let value_exn = function None -> raise Not_found | Some x -> x
@@ -83,13 +84,13 @@ end
 
 let commands f =
   try
-    let (content,start,cnt,group,once) = args 1 None None None None false in
-    if content = None || cnt = None then (
+    let (content,start,cnt,group,once,repo) = args 1 None None None None false None in
+    if content = None || cnt = None || repo = None then (
       usage ();
       return ()
     ) else
       f (Option.value_exn content) (Option.value start ~default:0)
-        (Option.value_exn cnt) group once
+        (Option.value_exn cnt) group once (Option.value_exn repo)
   with InvalidCommand -> usage (); return ()
 
 let pr store key =
@@ -108,8 +109,8 @@ let get_key start i = function
 
 let () =
   Lwt_main.run (
-    commands (fun content start cnt group once ->
-    let config = Irmin_git.config ~root:"/tmp/irmin/test" ~bare:true () in
+    commands (fun content start cnt group once repo ->
+    let config = Irmin_git.config ~root:repo ~bare:true () in
     Store.create config task >>= fun store ->
     begin
       if once then
@@ -117,9 +118,9 @@ let () =
       else
         return None
     end >>= fun gview ->
-    let rec fill i =
+    let rec fill i origsize =
       if i > cnt then
-        return ()
+        return origsize
       else (
         begin 
           match gview with
@@ -128,19 +129,28 @@ let () =
         end >>= fun view ->
         get_content content (start+i) >>= fun bytes ->
         let (key,str) = get_key start i group in
-        Printf.printf "%7s %d\n%!" str (Bytes.length bytes);
+        let len = Bytes.length bytes in
+        let origsize = origsize + len in
         View.update view key bytes >>= fun () ->
         begin
           match gview with
           | Some _ -> return ()
           | None -> View.update_path (store "updating store") ["root"] view 
         end >>= fun () ->
-        fill (i + 1) 
+        fill (i + 1) origsize
       )
     in
-    fill 1 >>= fun () ->
+    fill 1 0 >>= fun origsize ->
+    Printf.printf "original size: %dKB\n%!" (origsize/1000);
+    begin
     match gview with
     | Some view -> View.update_path (store "updating store") ["root"] view
     | None -> return ()
+    end >>= fun () ->
+    let ci = Unix.open_process_in ("du -csh " ^ (Filename.concat repo  ".git")) in
+    let str = Pervasives.input_line ci in
+    let _ = Unix.close_process_in ci in
+    Printf.printf "repo size: %s\n%!" str;
+    return ()
     )
   )
