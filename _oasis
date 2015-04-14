@@ -12,7 +12,7 @@ Executable overhead
   MainIs:           overhead.ml
   CompiledObject:   best
   Install:          false
-  BuildDepends:     irmin.unix
+  BuildDepends:     irmin.unix,re,re.posix
 
 Executable search
   Path:             search/
